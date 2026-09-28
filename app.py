@@ -12,8 +12,7 @@ app = Flask(__name__)
 # ==============================
 # MODEL PATH
 # ==============================
-
-MODEL_PATH = "features/models/random_forest_model.pkl"
+MODEL_PATH = "random_forest_model.pkl"
 
 model = joblib.load(MODEL_PATH)
 
