@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robotic Arm Fault Detection</title>
+    <meta name="description" content="Acoustic condition monitoring and fault detection for robotic arms.">
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+    <!-- Top Navigation Header -->
+    <header class="top-header">
+        <a href="/" class="brand-link">
+            <div class="brand-logo-mark">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+            </div>
+            <div class="brand-title-wrap">
+                <div class="brand-title-main">
+                    Robotic Arm Fault Monitor
+                </div>
+                <div class="brand-sub">Condition Monitoring</div>
+            </div>
+        </a>
+        <div class="header-status-group">
+            <!-- Theme Toggle Button -->
+            <button type="button" class="theme-toggle-btn" title="Toggle theme">
+                <span class="theme-toggle-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </span>
+                <span>Light</span>
+            </button>
+
+            <div class="system-pill">
+                <span class="pulse-dot"></span>
+                <span>Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+
+        <!-- Hero Section with Ambient Waveform -->
+        <section class="hero-banner">
+            <div class="hero-left">
+                <h1 class="hero-heading">Acoustic Fault Diagnostics</h1>
+                <p class="hero-paragraph">
+                    Upload audio recordings (.wav) from arm joints and bearings to identify mechanical faults.
+                </p>
+            </div>
+
+            <!-- Ambient Oscilloscope Canvas -->
+            <div class="hero-wave-canvas-wrap">
+                <canvas id="heroWaveCanvas" class="hero-wave-canvas"></canvas>
+            </div>
+        </section>
+
+        <!-- Workspace Grid: Upload & Benchmark Presets -->
+        <section class="workspace-grid">
+
+            <!-- Primary Upload Area -->
+            <div class="studio-card">
+                <div class="studio-card-header">
+                    <div class="studio-card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Upload Audio
+                    </div>
+                    <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">
+                        WAV format (16 kHz)
+                    </span>
+                </div>
+                <div class="studio-card-body">
+                    <form id="uploadForm" action="/predict" method="POST" enctype="multipart/form-data">
+                        
+                        <div class="audio-dropzone" id="dropzone">
+                            <input type="file" id="audioInput" name="audio" accept=".wav,audio/wav" required>
+                            <div class="dropzone-icon-box">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                    <line x1="12" y1="19" x2="12" y2="22"></line>
+                                </svg>
+                            </div>
+                            <div class="dropzone-main-text">Drop WAV file here</div>
+                            <div class="dropzone-sub-text">or click to browse (.wav)</div>
+
+                            <!-- Selected File Staging Display -->
+                            <div class="staged-file-card" id="fileSelectedBox">
+                                <div>
+                                    <div class="staged-file-name" id="selectedFileName">recording.wav</div>
+                                    <div class="staged-file-details" id="selectedFileSize">0 KB</div>
+                                </div>
+                                <span class="preset-badge badge-normal">Ready</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-execute" id="submitBtn">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Run Diagnostics
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Benchmark Presets Column with Inline Sparklines -->
+            <div class="studio-card">
+                <div class="studio-card-header">
+                    <div class="studio-card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        Sample Recordings
+                    </div>
+                    <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">
+                        Quick Demo
+                    </span>
+                </div>
+                <div class="studio-card-body">
+                    <div class="presets-list">
+
+                        <!-- Preset 1: Normal Baseline -->
+                        <a href="/demo/normal" class="preset-card-item">
+                            <div class="preset-item-top">
+                                <span class="preset-item-title">Normal Baseline</span>
+                                <span class="preset-badge badge-normal">Normal</span>
+                            </div>
+                            <svg class="preset-sparkline-svg" viewBox="0 0 260 36" fill="none">
+                                <path d="M0,18 Q30,10 65,18 T130,18 T195,18 T260,18" stroke="#10b981" stroke-width="1.5" fill="none"></path>
+                                <path d="M0,18 Q15,12 35,18 T70,18 T105,18 T140,18 T175,18 T210,18 T260,18" stroke="rgba(16,185,129,0.35)" stroke-width="1" fill="none"></path>
+                            </svg>
+                            <div class="preset-item-bottom">
+                                <span>10s • 16 kHz</span>
+                                <span class="preset-run-arrow">Run Demo →</span>
+                            </div>
+                        </a>
+
+                        <!-- Preset 2: Fault Anomaly -->
+                        <a href="/demo/fault" class="preset-card-item">
+                            <div class="preset-item-top">
+                                <span class="preset-item-title">Joint Anomaly</span>
+                                <span class="preset-badge badge-fault">Fault</span>
+                            </div>
+                            <svg class="preset-sparkline-svg" viewBox="0 0 260 36" fill="none">
+                                <path d="M0,18 Q20,18 45,18 T80,18 L95,6 L105,30 L115,8 L125,26 L135,18 T180,18 T220,18 T260,18" stroke="#f43f5e" stroke-width="1.5" fill="none"></path>
+                                <path d="M0,18 Q30,14 60,18 T120,24 T180,12 T240,18 T260,18" stroke="rgba(244,63,94,0.35)" stroke-width="1" fill="none"></path>
+                            </svg>
+                            <div class="preset-item-bottom">
+                                <span>10s • 16 kHz</span>
+                                <span class="preset-run-arrow" style="color: #f43f5e;">Run Demo →</span>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Feature Overview -->
+        <h2 class="section-headline">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            Model Features
+        </h2>
+
+        <div class="dsp-tiles-grid">
+            <div class="dsp-tile">
+                <div class="dsp-tile-header">Time Domain</div>
+                <div class="dsp-tile-val" style="font-size: 16px;">RMS Energy</div>
+                <div class="dsp-tile-sub">Signal amplitude & power</div>
+            </div>
+
+            <div class="dsp-tile">
+                <div class="dsp-tile-header">Time Domain</div>
+                <div class="dsp-tile-val" style="font-size: 16px;">ZCR</div>
+                <div class="dsp-tile-sub">Zero crossing rate</div>
+            </div>
+
+            <div class="dsp-tile">
+                <div class="dsp-tile-header">Frequency</div>
+                <div class="dsp-tile-val" style="font-size: 16px;">Centroid</div>
+                <div class="dsp-tile-sub">Center frequency</div>
+            </div>
+
+            <div class="dsp-tile">
+                <div class="dsp-tile-header">Frequency</div>
+                <div class="dsp-tile-val" style="font-size: 16px;">Bandwidth</div>
+                <div class="dsp-tile-sub">Spectral spread</div>
+            </div>
+
+            <div class="dsp-tile">
+                <div class="dsp-tile-header">Frequency</div>
+                <div class="dsp-tile-val" style="font-size: 16px;">Rolloff</div>
+                <div class="dsp-tile-sub">85% energy cutoff</div>
+            </div>
+        </div>
+
+        <div class="secondary-vis-grid">
+            <div class="studio-card">
+                <div class="studio-card-header">
+                    <div class="studio-card-title">Spectral Contrast</div>
+                    <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">7 Bands</span>
+                </div>
+                <div class="studio-card-body" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+                    Peak-to-valley energy difference across octave sub-bands.
+                </div>
+            </div>
+
+            <div class="studio-card">
+                <div class="studio-card-header">
+                    <div class="studio-card-title">MFCCs</div>
+                    <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">13 Coefficients</span>
+                </div>
+                <div class="studio-card-body" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+                    Mel-frequency cepstral coefficients capturing acoustic harmonic profile.
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+        <p>Robotic Arm Fault Detection System</p>
+    </footer>
+
+    <!-- Script -->
+    <script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+</body>
+</html>

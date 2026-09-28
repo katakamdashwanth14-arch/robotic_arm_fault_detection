@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Report | Robotic Arm Fault Detection</title>
+    <meta name="description" content="Acoustic condition monitoring report and fault classification.">
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    
+    <!-- Chart.js from CDN (Visualizer includes offline HTML5 canvas fallback) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Top Navigation Header -->
+    <header class="top-header">
+        <a href="/" class="brand-link">
+            <div class="brand-logo-mark">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+            </div>
+            <div class="brand-title-wrap">
+                <div class="brand-title-main">
+                    Robotic Arm Fault Monitor
+                </div>
+                <div class="brand-sub">Diagnostic Report</div>
+            </div>
+        </a>
+        <div class="header-status-group">
+            <!-- Theme Toggle Button -->
+            <button type="button" class="theme-toggle-btn" title="Toggle theme">
+                <span class="theme-toggle-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </span>
+                <span>Light</span>
+            </button>
+
+            <!-- Export PDF / Print Button -->
+            <button type="button" class="btn-ghost-back" onclick="printDiagnosticReport()" title="Print report">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                Print Report
+            </button>
+
+            <a href="/" class="btn-ghost-back">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Upload Audio
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+
+        <!-- Report Header Bar -->
+        <div class="report-action-header">
+            <div>
+                <span class="hero-chip" style="margin-bottom: 6px;">
+                    {% if is_sample %}Sample Recording{% else %}Uploaded File{% endif %}
+                </span>
+                <h1 style="font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary);">
+                    Diagnostic Report
+                </h1>
+                <p style="font-size: 13px; color: var(--text-secondary); font-family: var(--font-mono); margin-top: 4px;">
+                    File: <span style="color: var(--text-accent); font-weight: 500;">{{ filename }}</span>
+                </p>
+            </div>
+            <div class="report-header-actions">
+                <a href="/" class="btn-ghost-back">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    New Upload
+                </a>
+            </div>
+        </div>
+
+        <!-- ==================================================================
+             1. Model Classification Status Banner
+             ================================================================== -->
+        {% if prediction == "normal" %}
+            <section class="verdict-studio-card normal">
+                <div class="verdict-status-icon">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="verdict-status-title">Normal Operation</h2>
+                    <p class="verdict-status-desc">
+                        Acoustic signature is within normal limits. No anomalies detected.
+                    </p>
+                </div>
+                <div class="confidence-gauge-card">
+                    <div class="confidence-gauge-header">
+                        <span>Confidence</span>
+                        <span>Random Forest</span>
+                    </div>
+                    {% for class_name, probability in probabilities.items() %}
+                        <div class="confidence-bar-row">
+                            <div class="confidence-label-split">
+                                <span style="color: {% if class_name == 'normal' %}var(--normal-emerald){% else %}var(--text-muted){% endif %};">
+                                    {{ class_name | capitalize }}
+                                </span>
+                                <span style="font-family: var(--font-mono); font-weight: 700;">
+                                    {{ probability }}%
+                                </span>
+                            </div>
+                            <div class="confidence-track">
+                                <div class="confidence-fill {% if class_name == 'normal' %}fill-emerald{% else %}fill-rose{% endif %}"
+                                     style="width: {{ probability }}%;"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% else %}
+            <section class="verdict-studio-card fault">
+                <div class="verdict-status-icon">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="verdict-status-title">Anomaly Detected</h2>
+                    <p class="verdict-status-desc">
+                        Acoustic signature deviates from normal baseline. Mechanical inspection recommended.
+                    </p>
+                </div>
+                <div class="confidence-gauge-card">
+                    <div class="confidence-gauge-header">
+                        <span>Confidence</span>
+                        <span>Random Forest</span>
+                    </div>
+                    {% for class_name, probability in probabilities.items() %}
+                        <div class="confidence-bar-row">
+                            <div class="confidence-label-split">
+                                <span style="color: {% if class_name == 'normal' %}var(--text-muted){% else %}var(--fault-rose){% endif %};">
+                                    {{ class_name | capitalize }}
+                                </span>
+                                <span style="font-family: var(--font-mono); font-weight: 700;">
+                                    {{ probability }}%
+                                </span>
+                            </div>
+                            <div class="confidence-track">
+                                <div class="confidence-fill {% if class_name == 'normal' %}fill-emerald{% else %}fill-rose{% endif %}"
+                                     style="width: {{ probability }}%;"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        <!-- ==================================================================
+             2. Synchronized Audio Player Controller
+             ================================================================== -->
+        <section class="custom-audio-bar">
+            <!-- Hidden native audio element -->
+            <audio id="nativeAudioElement" preload="auto">
+                <source src="data:audio/wav;base64,{{ audio_base64 }}" type="audio/wav">
+            </audio>
+
+            <div class="custom-player-controls">
+                <button type="button" id="customPlayBtn" class="btn-play-toggle" title="Play / Pause Audio">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+                <div class="player-scrubber-wrap">
+                    <span id="playerTimeDisplay" class="player-time-display">00:00 / 00:10</span>
+                    <input type="range" id="playerScrubber" class="player-slider" min="0" max="100" value="0" step="0.1">
+                </div>
+            </div>
+
+            <div class="telemetry-meta-row">
+                {% if audio_metadata %}
+                    <div class="meta-chip">Duration: <strong>{{ audio_metadata.duration }}s</strong></div>
+                    <div class="meta-chip">Sample Rate: <strong>{{ audio_metadata.sample_rate }} Hz</strong></div>
+                    <div class="meta-chip">Samples: <strong>{{ audio_metadata.num_samples }}</strong></div>
+                    <div class="meta-chip">Peak Amp: <strong>±{{ audio_metadata.peak_amplitude }}</strong></div>
+                    <div class="meta-chip">Dominant: <strong>{{ audio_metadata.dominant_frequency }} Hz</strong></div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             3. Waveform & FFT Visualizations (Responsive Waveform with FFT below it)
+             ================================================================== -->
+        <h2 class="section-headline">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            Waveform & Frequency Spectrum
+        </h2>
+
+        <section class="visualizers-grid">
+            <!-- 1. Waveform Card with Click Seek and Playhead Needle -->
+            <div class="vis-card">
+                <div class="vis-card-header">
+                    <div class="vis-card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 12h3l3-8 4 16 3-8h7"></path>
+                        </svg>
+                        Time-Domain Waveform
+                    </div>
+                    <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-accent);">
+                        Interactive • Click to seek
+                    </span>
+                </div>
+                <div class="vis-canvas-container">
+                    <canvas id="waveformCanvas"></canvas>
+                    <div id="waveformPlayheadNeedle" class="waveform-playhead-needle"></div>
+                </div>
+                <div class="vis-card-footer">
+                    <div id="waveformRangeText">Range: <strong>±{{ audio_metadata.peak_amplitude if audio_metadata else '1.0' }}</strong></div>
+                    <div>Peak Amp: <strong style="color: var(--text-accent);">±{{ audio_metadata.peak_amplitude if audio_metadata else 'N/A' }}</strong></div>
+                    <div>RMS Energy: <strong>{{ dsp_features.rms if dsp_features else 'N/A' }}</strong></div>
+                    <div>Duration: <strong>{{ audio_metadata.duration if audio_metadata else '10.0' }}s</strong></div>
+                </div>
+            </div>
+
+            <!-- 2. FFT Power Spectrum Card (Positioned directly below Waveform) -->
+            <div class="vis-card">
+                <div class="vis-card-header">
+                    <div class="vis-card-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        FFT Frequency Spectrum
+                    </div>
+                    <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">
+                        0 – {{ (audio_metadata.sample_rate // 2) if audio_metadata and audio_metadata.sample_rate else 8000 }} Hz (Nyquist)
+                    </span>
+                </div>
+                <div class="vis-canvas-container">
+                    <canvas id="fftCanvas"></canvas>
+                </div>
+                <div class="vis-card-footer">
+                    <div>Dominant Peak: <strong style="color: var(--fft-purple);">{{ audio_metadata.dominant_frequency if audio_metadata else 'N/A' }} Hz</strong></div>
+                    {% if dsp_features %}
+                        <div>Spectral Centroid: <strong style="color: var(--waveform-cyan);">{{ dsp_features.spectral_centroid }} Hz</strong></div>
+                        <div>Spectral Bandwidth: <strong style="color: var(--text-accent);">{{ dsp_features.spectral_bandwidth }} Hz</strong></div>
+                        <div>Spectral Rolloff: <strong style="color: var(--warning-amber);">{{ dsp_features.spectral_rolloff }} Hz</strong></div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             4. DSP Feature Analysis (Actual Extracted 25 Features Grouped)
+             ================================================================== -->
+        <div class="dsp-analysis-header">
+            <div class="dsp-analysis-title-wrap">
+                <span class="dsp-analysis-badge">DSP Feature Analysis</span>
+                <h2 class="section-headline" style="margin-bottom: 4px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    Acoustic Feature Telemetry
+                </h2>
+                <p class="dsp-analysis-desc">
+                    Actual digital signal processing (DSP) metrics extracted directly from the uploaded WAV audio across time and frequency domains.
+                </p>
+            </div>
+            <div class="dsp-count-pill">
+                <span class="count-num">25</span>
+                <span>Features Extracted</span>
+            </div>
+        </div>
+
+        {% if dsp_features %}
+        <!-- 4-Group Feature Analysis Grid -->
+        <section class="dsp-feature-groups-grid">
+
+            <!-- Group 1: TIME DOMAIN -->
+            <div class="dsp-group-card">
+                <div class="dsp-group-header">
+                    <div class="dsp-group-title">
+                        <div class="group-icon-wrap time">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="group-sublabel">Category 01</span>
+                            <h3>TIME DOMAIN</h3>
+                        </div>
+                    </div>
+                    <span class="group-count-tag">2 Features</span>
+                </div>
+                <div class="dsp-group-body">
+                    <table class="dsp-clean-table">
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th style="text-align: right;">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in dsp_features.time_domain %}
+                            <tr>
+                                <td>
+                                    <div class="feature-cell-title">{{ item.name }}</div>
+                                    <div class="feature-cell-sub">{{ item.description }}</div>
+                                </td>
+                                <td class="feature-cell-value">
+                                    <span class="val-mono">{{ item.value }}</span>
+                                    {% if item.unit %}<span class="val-unit">{{ item.unit }}</span>{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Group 2: FREQUENCY DOMAIN -->
+            <div class="dsp-group-card">
+                <div class="dsp-group-header">
+                    <div class="dsp-group-title">
+                        <div class="group-icon-wrap freq">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="group-sublabel">Category 02</span>
+                            <h3>FREQUENCY DOMAIN</h3>
+                        </div>
+                    </div>
+                    <span class="group-count-tag">3 Features</span>
+                </div>
+                <div class="dsp-group-body">
+                    <table class="dsp-clean-table">
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th style="text-align: right;">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in dsp_features.frequency_domain %}
+                            <tr>
+                                <td>
+                                    <div class="feature-cell-title">{{ item.name }}</div>
+                                    <div class="feature-cell-sub">{{ item.description }}</div>
+                                </td>
+                                <td class="feature-cell-value">
+                                    <span class="val-mono accent-freq">{{ item.value }}</span>
+                                    <span class="val-unit">Hz</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Group 3: SPECTRAL CONTRAST -->
+            <div class="dsp-group-card">
+                <div class="dsp-group-header">
+                    <div class="dsp-group-title">
+                        <div class="group-icon-wrap contrast">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="20" x2="18" y2="10"></line>
+                                <line x1="12" y1="20" x2="12" y2="4"></line>
+                                <line x1="6" y1="20" x2="6" y2="14"></line>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="group-sublabel">Category 03</span>
+                            <h3>SPECTRAL CONTRAST</h3>
+                        </div>
+                    </div>
+                    <span class="group-count-tag">7 Bands</span>
+                </div>
+                <div class="dsp-group-body">
+                    <table class="dsp-clean-table">
+                        <thead>
+                            <tr>
+                                <th>Sub-Band</th>
+                                <th style="text-align: right;">Contrast</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in dsp_features.spectral_contrast_list %}
+                            <tr>
+                                <td>
+                                    <div class="feature-cell-title">{{ item.name }}</div>
+                                    <div class="feature-cell-sub">{{ item.band }}</div>
+                                </td>
+                                <td class="feature-cell-value">
+                                    <span class="val-mono accent-contrast">{{ item.value }}</span>
+                                    <span class="val-unit">dB</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Group 4: MFCC (MEL-FREQUENCY CEPSTRAL COEFFICIENTS) -->
+            <div class="dsp-group-card">
+                <div class="dsp-group-header">
+                    <div class="dsp-group-title">
+                        <div class="group-icon-wrap mfcc">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="group-sublabel">Category 04</span>
+                            <h3>MFCC</h3>
+                        </div>
+                    </div>
+                    <span class="group-count-tag">13 Coefficients</span>
+                </div>
+                <div class="dsp-group-body">
+                    <div class="mfcc-compact-grid">
+                        <table class="dsp-clean-table">
+                            <thead>
+                                <tr>
+                                    <th>Coeff</th>
+                                    <th style="text-align: right;">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in dsp_features.mfcc_list[:7] %}
+                                <tr>
+                                    <td>
+                                        <div class="feature-cell-title">{{ item.name }}</div>
+                                        {% if loop.first %}<div class="feature-cell-sub">Log Energy</div>{% endif %}
+                                    </td>
+                                    <td class="feature-cell-value">
+                                        <span class="val-mono {% if item.raw >= 0 %}val-pos{% else %}val-neg{% endif %}">{{ item.value }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <table class="dsp-clean-table">
+                            <thead>
+                                <tr>
+                                    <th>Coeff</th>
+                                    <th style="text-align: right;">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in dsp_features.mfcc_list[7:] %}
+                                <tr>
+                                    <td>
+                                        <div class="feature-cell-title">{{ item.name }}</div>
+                                    </td>
+                                    <td class="feature-cell-value">
+                                        <span class="val-mono {% if item.raw >= 0 %}val-pos{% else %}val-neg{% endif %}">{{ item.value }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ==================================================================
+             5. Spectral Contrast & MFCC Visualizations (With Segment Toggle)
+             ================================================================== -->
+        <section class="secondary-vis-grid">
+            <!-- 6. Spectral Contrast -->
+            <div class="vis-card">
+                <div class="vis-card-header">
+                    <div class="vis-card-title">
+                        Spectral Contrast
+                    </div>
+                    <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">
+                        7 Bands
+                    </span>
+                </div>
+                <div class="vis-canvas-container">
+                    <canvas id="contrastCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- 7. MFCC 13 Coefficients with Interactive Segment Toggle -->
+            <div class="vis-card">
+                <div class="vis-card-header">
+                    <div class="vis-card-title">
+                        MFCC Coefficients
+                    </div>
+                    <!-- View Toggle Button -->
+                    <div class="toggle-segment-group">
+                        <button type="button" id="toggleMfccFormants" class="toggle-segment-btn active" title="Show MFCC 2 to 13">
+                            MFCC 2–13
+                        </button>
+                        <button type="button" id="toggleMfccFull" class="toggle-segment-btn" title="Show All 13 Coefficients">
+                            MFCC 1–13
+                        </button>
+                    </div>
+                </div>
+                <div class="vis-canvas-container">
+                    <canvas id="mfccCanvas"></canvas>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 8px;">
+                    <span id="mfccEnergyCallout" class="mfcc-energy-callout">
+                        MFCC 1 (Log Energy): Loading...
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             6. Full 25-Feature Table & Live Search
+             ================================================================== -->
+        <section class="table-card-wrap">
+            <div class="table-action-bar">
+                <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    All Features (25)
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="text" id="tableSearchInput" placeholder="Filter features..." class="table-search-input">
+                    <button type="button" class="btn-ghost-back" style="height: 32px;" onclick="copyFeaturesJson({{ dsp_features.all_features | tojson | safe }})">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Copy JSON
+                    </button>
+                </div>
+            </div>
+            
+            <div class="table-scroll-view">
+                <table class="telemetry-table" id="telemetryTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Index</th>
+                            <th>Feature</th>
+                            <th>Domain</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if dsp_features.all_features %}
+                            {% for col, val in dsp_features.all_features.items() %}
+                                <tr>
+                                    <td style="color: var(--text-muted);">{{ loop.index }}</td>
+                                    <td style="font-weight: 600; color: var(--text-accent);">{{ col }}</td>
+                                    <td style="color: var(--text-muted);">
+                                        {% if col in ['rms', 'zcr'] %}
+                                            Time Domain
+                                        {% elif 'contrast' in col %}
+                                            Spectral Contrast
+                                        {% elif 'mfcc' in col %}
+                                            MFCC
+                                        {% else %}
+                                            Frequency
+                                        {% endif %}
+                                    </td>
+                                    <td style="font-weight: 600;">{{ val }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Navigation Action -->
+        <div style="text-align: center; margin-top: 10px;">
+            <a href="/" class="btn-ghost-back" style="height: 42px; padding: 0 26px; font-size: 13px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Upload Another File
+            </a>
+        </div>
+
+    </main>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+        <p>Robotic Arm Fault Detection System</p>
+    </footer>
+
+    <!-- Pass backend data to frontend visualizer -->
+    <script>
+        const diagnosticData = {
+            waveform: {{ waveform_data | tojson | safe if waveform_data else 'null' }},
+            fft: {{ fft_data | tojson | safe if fft_data else 'null' }},
+            metadata: {{ audio_metadata | tojson | safe if audio_metadata else 'null' }},
+            contrast: {
+                labels: {{ dsp_features.spectral_contrast_labels | tojson | safe if dsp_features and dsp_features.spectral_contrast_labels else '[]' }},
+                values: {{ dsp_features.spectral_contrast | tojson | safe if dsp_features and dsp_features.spectral_contrast else '[]' }}
+            },
+            mfcc: {
+                labels: {{ dsp_features.mfcc_labels | tojson | safe if dsp_features and dsp_features.mfcc_labels else '[]' }},
+                values: {{ dsp_features.mfcc | tojson | safe if dsp_features and dsp_features.mfcc else '[]' }}
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initDiagnosticCharts(diagnosticData);
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+</body>
+</html>
