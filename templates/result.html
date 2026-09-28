@@ -7,7 +7,7 @@
     <meta name="description" content="Acoustic condition monitoring report and fault classification.">
 
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
     
     <!-- Chart.js from CDN (Visualizer includes offline HTML5 canvas fallback) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -644,6 +644,6 @@
             initDiagnosticCharts(diagnosticData);
         });
     </script>
-    <script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+    <script src="{{ url_for('static', filename='visualizer.js') }}"></script>
 </body>
 </html>
